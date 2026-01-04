@@ -1,1 +1,129 @@
 @import "tailwindcss";
+
+body {
+    background-image: url(/img/sein.jpg);
+    background-size: cover;
+    /* background-position: center; */
+    font-family: 'Libre Caslon Text', serif;
+    font-weight: 700;
+    color:white;
+}
+
+h2 {
+    position: relative;
+    font-family: "Libre Caslon Text";
+    font-size: 40px;
+    font-weight: 700;
+    color: transparent;
+}
+
+h2::before {
+    content: attr(data-text);
+    position: absolute;
+    left: 0; top: 0;
+    z-index: -2;
+    color: #fff; /* stroke color */
+    filter: blur(2px); /* thickness of stroke */
+}
+
+h2::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0; top: 0;
+    z-index: -1;
+    background: linear-gradient(0deg, #4F508E -6.86%, #8D8BC3 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.station {
+  position: relative;
+  width: 100%;
+  max-width: 426px;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  display: inline-block;
+}
+
+/* Gradient border */
+.station::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 12px; /* 8px + 4px border */
+  background: linear-gradient(to bottom, gray, white);
+  z-index: 0; /* behind everything */
+}
+
+/* Button image layer */
+.station::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 8px;
+  background-size: cover;
+  background-position: center;
+  z-index: 1; /* above border */
+  transition: filter 0.3s ease; /* smooth dimming */
+}
+
+/* Off state (dimmed image) */
+.station.off::after {
+  filter: brightness(0.6) contrast(0.8) saturate(0.6);
+  cursor: default;
+  pointer-events: none; /* optional: disable clicks */
+}
+
+
+#button-shonan:after {
+    background-image: url('/img/button-shonan.png');
+}
+
+#button-108soul:after {
+    background-image: url('/img/button-108soul.png');
+}
+
+#button-knkx:after {
+    background-image: url('/img/button-knkx.png');
+}
+
+#toggleSein:after {
+    background-image: url('/img/button-seinfeld.png');
+}
+
+
+
+
+
+
+/* video stuff below */
+
+#retroVideo {
+      visibility: hidden;
+  width: auto;
+  height: auto;
+}
+
+#retroCanvas {
+  width: 640px;
+  height: 360px;
+
+  /* subtle CRT-style asymmetrical rounding */
+  border-radius: 5% 4% 6% 5% / 4% 5% 5% 4%;
+
+  /* optional: slight bezel glow for CRT feel */
+  box-shadow: 0 0 8px rgba(0, 255, 200, 0.1), inset 0 0 12px rgba(0,0,0,0.15);
+
+  overflow: hidden;
+  display: block;
+  margin: 0 auto;
+}
+

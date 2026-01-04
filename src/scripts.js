@@ -56,14 +56,31 @@ source
 
 // --- Play / Pause ---
 const buttons = document.querySelectorAll(".station");
-console.log(buttons);
 
+let isPlayingRadio = false;
 
 buttons.forEach(button => {
   button.addEventListener("click", async () => {
-    const streamUrl = button.dataset.station;
-    await playStation(streamUrl);
-    button.innerText = audio.paused ? "Play" : "Pause";
+
+    if (!isPlayingRadio) {
+      // START
+      const streamUrl = button.dataset.station;
+      await playStation(streamUrl);
+
+      try {
+        await audio.play();
+        isPlayingRadio = true;
+        button.classList.remove("off");
+      } catch (err) {
+        console.error("Audio could not play:", err);
+      }
+
+    } else {
+      // PAUSE
+      audio.pause();
+      isPlayingRadio = false;
+      button.classList.add("off");
+    }
   });
 });
 
@@ -106,14 +123,14 @@ rainSound.crossOrigin = "anonymous";
 const lowShelfRain = audioCtxRain.createBiquadFilter();
 lowShelfRain.type = "lowshelf";
 lowShelfRain.frequency.value = 120;
-lowShelfRain.gain.value = 6; // boost low end
+lowShelfRain.gain.value = 10; // boost low end
 
 // Cut most mids
 const midPeakRain = audioCtxRain.createBiquadFilter();
 midPeakRain.type = "peaking";
 midPeakRain.frequency.value = 1000; // center of mids
 midPeakRain.Q.value = 1.2;
-midPeakRain.gain.value = -2; // cut mids hard
+midPeakRain.gain.value = -6; // cut mids hard
 
 // Roll off highs
 const highShelfRain = audioCtxRain.createBiquadFilter();
@@ -170,7 +187,7 @@ function toggleRain() {
   }
 
   isPlaying = !isPlaying;
-  const targetVolume = isPlaying ? 0.5 : 0; // half volume
+  const targetVolume = isPlaying ? 1 : 0; // half volume
 
   if (isPlaying) {
     rainSound.play().catch(err => console.log(err));
@@ -185,6 +202,110 @@ function toggleRain() {
 
 // --- Connect button ---
 document.getElementById("toggleRain").addEventListener("click", toggleRain);
+
+
+
+
+
+// Sein
+
+const audioCtxSein = new (window.AudioContext || window.webkitAudioContext)();
+const videoSein = document.getElementById("seinPlayer");
+
+// --- Load HLS ---
+if (Hls.isSupported()) {
+  const hls = new Hls();
+  hls.loadSource("https://watch-episodes.seinfeld626.com/hls/seinfeld/master.m3u8");
+  hls.attachMedia(videoSein);
+  hls.on(Hls.Events.MANIFEST_PARSED, () => {
+  hls.currentLevel = 0; // lowest bitrate rendition
+  hls.autoLevelEnabled = false;
+});
+
+} else if (videoSein.canPlayType("application/vnd.apple.mpegurl")) {
+  // Safari native HLS
+  videoSein.src = "https://watch-episodes.seinfeld626.com/hls/seinfeld/master.m3u8";
+}
+
+// --- Web Audio chain ---
+const sourceSein = audioCtxSein.createMediaElementSource(videoSein);
+
+const lowShelfSein = audioCtxSein.createBiquadFilter();
+lowShelfSein.type = "lowshelf";
+lowShelfSein.frequency.value = 120;
+lowShelfSein.gain.value = 6;
+
+const midCutSein = audioCtxSein.createBiquadFilter();
+midCutSein.type = "peaking";
+midCutSein.frequency.value = 1000;
+midCutSein.Q.value = 1.2;
+midCutSein.gain.value = -18;
+
+const highRollSein = audioCtxSein.createBiquadFilter();
+highRollSein.type = "highshelf";
+highRollSein.frequency.value = 3500;
+highRollSein.gain.value = -20;
+
+const saturationSein = audioCtxSein.createWaveShaper();
+saturationSein.curve = makeSaturationCurveRain(5);
+saturationSein.oversample = "4x";
+
+const gainSein = audioCtxSein.createGain();
+gainSein.gain.value = 0;
+
+// --- Connect chain ---
+sourceSein
+  .connect(lowShelfSein)
+  .connect(midCutSein)
+  .connect(highRollSein)
+  .connect(saturationSein)
+  .connect(gainSein)
+  .connect(audioCtxSein.destination);
+
+  function fadeGainSein(target, duration) {
+  const now = audioCtxSein.currentTime;
+  gainSein.gain.cancelScheduledValues(now);
+  gainSein.gain.setValueAtTime(gainSein.gain.value, now);
+  gainSein.gain.linearRampToValueAtTime(target, now + duration);
+}
+
+
+
+let isPlayingSein = false;
+let audioResumedSein = false;
+
+function toggleSein() {
+  // Required: resume AudioContext on user gesture
+  if (!audioResumedSein && audioCtxSein.state === "suspended") {
+    audioCtxSein.resume();
+    audioResumedSein = true;
+  }
+
+  isPlayingSein = !isPlayingSein;
+  const targetVolume = isPlayingSein ? 0.4 : 0; // adjust to taste
+  const fadeTime = 1.5;
+
+  if (isPlayingSein) {
+    videoSein.muted = false;
+    videoSein.play().catch(console.error);
+    fadeGainSein(targetVolume, fadeTime);
+  } else {
+    fadeGainSein(0, fadeTime);
+    setTimeout(() => videoSein.pause(), fadeTime * 1000);
+  }
+
+  
+
+  document.getElementById("toggleSein").textContent =
+    isPlayingSein ? "Pause" : "Play";
+}
+
+
+document
+  .getElementById("toggleSein")
+  .addEventListener("click", toggleSein);
+
+
 
 
 });
