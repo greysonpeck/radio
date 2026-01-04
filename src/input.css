@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 body {
-    background-image: url(img/sein.jpg);
+    background-image: url('/img/sein.jpg');
     background-size: cover;
     /* background-position: center; */
     font-family: 'Libre Caslon Text', serif;
@@ -84,19 +84,19 @@ h2::after {
 
 
 #button-shonan:after {
-    background-image: url('img/button-shonan.png');
+    background-image: url('/img/button-shonan.png');
 }
 
 #button-108soul:after {
-    background-image: url('img/button-108soul.png');
+    background-image: url('/img/button-108soul.png');
 }
 
 #button-knkx:after {
-    background-image: url('img/button-knkx.png');
+    background-image: url('/img/button-knkx.png');
 }
 
 #toggleSein:after {
-    background-image: url('img/button-seinfeld.png');
+    background-image: url('/img/button-seinfeld.png');
 }
 
 
