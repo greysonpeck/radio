@@ -164,11 +164,20 @@
   }
 }
 @layer utilities {
+  .relative {
+    position: relative;
+  }
+  .top-\[-75px\] {
+    top: -75px;
+  }
   .mt-12 {
     margin-top: calc(var(--spacing) * 12);
   }
   .flex {
     display: flex;
+  }
+  .w-\[355px\] {
+    width: 355px;
   }
   .flex-col {
     flex-direction: column;
@@ -179,8 +188,14 @@
   .items-center {
     align-items: center;
   }
+  .justify-center {
+    justify-content: center;
+  }
   .gap-4 {
     gap: calc(var(--spacing) * 4);
+  }
+  .gap-12 {
+    gap: calc(var(--spacing) * 12);
   }
   .rounded {
     border-radius: 0.25rem;
@@ -209,6 +224,11 @@
       @media (hover: hover) {
         background-color: var(--color-blue-700);
       }
+    }
+  }
+  .md\:flex-row {
+    @media (width >= 48rem) {
+      flex-direction: row;
     }
   }
 }
@@ -248,8 +268,8 @@ h2::after {
 .station {
   position: relative;
   width: 100%;
-  max-width: 426px;
-  height: 96px;
+  max-width: 355px;
+  height: 82px;
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
@@ -302,13 +322,19 @@ h2::after {
   height: auto;
 }
 #retroCanvas {
-  width: 640px;
-  height: 360px;
+  width: 400px;
+  height: auto;
   border-radius: 5% 4% 6% 5% / 4% 5% 5% 4%;
   box-shadow: 0 0 8px rgba(0, 255, 200, 0.1), inset 0 0 12px rgba(0,0,0,0.15);
   overflow: hidden;
   display: block;
   margin: 0 auto;
+}
+@media (min-width: 768px) {
+  #retroCanvas {
+    width: 640px;
+    height: 360px;
+  }
 }
 @property --tw-blur {
   syntax: "*";

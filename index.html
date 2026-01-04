@@ -12,7 +12,8 @@
 </head>
 <body>
 
-    <div class="flex flex-col mt-12 gap-4 items-center">
+    <div class="allContent flex md:flex-row flex-col items-center justify-center gap-12">
+    <div class="flex flex-col w-[355px] mt-12 gap-4 items-center">
   <button id="button-shonan" data-station="https://shonanbeachfm.out.airtime.pro/shonanbeachfm_c"
     class="station off px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
   >
@@ -45,18 +46,31 @@
   >
   </button>
 
-</div>
-
-
-
-
-
-<!-- Rain -->
+  <!-- Rain -->
   <div class="flex-row text-center">  <button
     id="toggleRain" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
   >
     RAIN
   </button></div>
+
+
+</div>
+
+
+<!-- saltybet -->
+ <iframe
+  src="https://player.twitch.tv/?channel=saltybet&parent=greysonpeck.github.io&autoplay=true&muted=true"
+  height="480"
+  width="720"
+  allowfullscreen>
+</iframe>
+
+
+
+
+
+
+
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
@@ -76,7 +90,7 @@
 <!-- Big video warping -->
 <div id="new">
 <video id="retroVideo" src="img/pokemon-supershort.mkv" autoplay muted loop playsinline style="opacity:0; width:auto; height:auto;"></video>
-<canvas id="retroCanvas"></canvas>
+<canvas id="retroCanvas" class="relative top-[-75px]"></canvas>
 
 <script type="module">
 const video = document.getElementById('retroVideo');
@@ -238,7 +252,9 @@ video.addEventListener('play', () => {
 });
 </script>
 
-</div> -->
+</div> 
+
+</div>
 
 
 </body>

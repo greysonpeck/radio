@@ -39,8 +39,8 @@ h2::after {
 .station {
   position: relative;
   width: 100%;
-  max-width: 426px;
-  height: 96px;
+  max-width: 355px;
+  height: 82px;
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
@@ -113,8 +113,8 @@ h2::after {
 }
 
 #retroCanvas {
-  width: 640px;
-  height: 360px;
+  width: 400px;
+  height: auto;
 
   /* subtle CRT-style asymmetrical rounding */
   border-radius: 5% 4% 6% 5% / 4% 5% 5% 4%;
@@ -127,3 +127,8 @@ h2::after {
   margin: 0 auto;
 }
 
+@media (min-width: 768px) {
+    #retroCanvas {
+      width: 640px;
+    height: 360px;
+    }}
