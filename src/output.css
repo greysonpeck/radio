@@ -235,16 +235,17 @@
 body {
   background-image: url(../img/sein.jpg);
   background-size: cover;
-  font-family: 'Libre Caslon Text', serif;
-  font-weight: 700;
+  font-family: 'Lexend', serif;
+  font-weight: 500;
   color: white;
 }
 h2 {
+  text-align: left;
   position: relative;
-  font-family: "Libre Caslon Text";
-  font-size: 40px;
-  font-weight: 700;
-  color: transparent;
+  font-family: "Lexend";
+  font-size: 32px;
+  font-weight: 300;
+  color: #464646;
 }
 h2::before {
   content: attr(data-text);
@@ -261,7 +262,7 @@ h2::after {
   left: 0;
   top: 0;
   z-index: -1;
-  background: linear-gradient(0deg, #4F508E -6.86%, #8D8BC3 100%);
+  background: linear-gradient(0deg, #a0a0a0 -6.86%, #8D8BC3 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -269,11 +270,11 @@ h2::after {
   position: relative;
   width: 100%;
   max-width: 355px;
-  height: 82px;
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
   display: inline-block;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.1),  0 6px 20px 0 rgba(0, 0, 0, 0.05);
 }
 .station::before {
   content: "";
@@ -283,7 +284,7 @@ h2::after {
   right: -4px;
   bottom: -4px;
   border-radius: 12px;
-  background: linear-gradient(to bottom, gray, white);
+  background: linear-gradient(to bottom, rgb(255, 255, 255), rgb(188, 190, 192));
   z-index: 0;
 }
 .station::after {
@@ -304,18 +305,6 @@ h2::after {
   cursor: default;
   pointer-events: none;
 }
-#button-shonan:after {
-  background-image: url(../img/button-shonan.png);
-}
-#button-108soul:after {
-  background-image: url(../img/button-108soul.png);
-}
-#button-knkx:after {
-  background-image: url(../img/button-knkx.png);
-}
-#toggleSein:after {
-  background-image: url(../img/button-seinfeld.png);
-}
 #retroVideo {
   visibility: hidden;
   width: auto;
@@ -329,6 +318,14 @@ h2::after {
   overflow: hidden;
   display: block;
   margin: 0 auto;
+}
+.time-of-day {
+  color: #464646;
+  text-align: left;
+  position: relative;
+}
+.time-of-day > svg {
+  display: inline;
 }
 @media (min-width: 768px) {
   #retroCanvas {
