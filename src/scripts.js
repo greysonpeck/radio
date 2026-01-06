@@ -26,8 +26,8 @@ const stations = [
     name: '108 Soul',
     url: 'http://s2.radio.co:80/sdd9757d9b/listen'
   },  {
-    name: 'BBC Radio 2',
-    url: 'http://lsn.lv/bbcradio.m3u8?station=bbc_radio_two&bitrate=96000'
+    name: 'BBC Radio 4',
+    url: 'http://lsn.lv/bbcradio.m3u8?station=bbc_radio_fourfm&bitrate=96000'
   }
 ];
 
