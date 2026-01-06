@@ -1,11 +1,15 @@
 @import "tailwindcss";
 
+
 body {
     background-color: #e9e5d9;
 
     font-family: 'Lexend', serif;
     font-weight: 500;
-    color:white;
+}
+
+.time-of-day > svg {
+    @apply text-zinc-400;
 }
 
 h2 {
@@ -14,7 +18,6 @@ h2 {
     font-family: "Lexend";
     font-size: 32px;
     font-weight: 300;
-    color: #464646;
 }
 
 h2::before {
@@ -95,7 +98,6 @@ h2::after {
 }
 
 .time-of-day {
-    color: #464646;
     text-align: left;
     position: relative;
 }
@@ -109,11 +111,11 @@ h2::after {
       touch-action: none; /* prevent default scrolling/pull-to-refresh gestures */
       -webkit-appearance: none;  /* remove default styling */
   appearance: none;           /* standard property for other browsers */
-    width: 200px;    /* length of slider after rotation */
+    width: 320px;    /* length of slider after rotation */
   height: 20px;    /* thickness of track + thumb */
   transform-origin: top left; /* adjust rotation pivot if needed */
   position: absolute; /* so you can place it anywhere */
-  top: 50px;          /* vertical offset on page */
+  top: 100px;          /* vertical offset on page */
   
 
     /* rotate slider */

@@ -15,33 +15,43 @@
       <div class="allContent flex flex-col items-center justify-center gap-4 mt-4">
                     
 
-         <div class="flex flex-row w-full max-w-[355px] gap-4">
+         <div class="flex flex-row w-full max-w-[355px] gap-4 text-zinc-600">
             <div id="stations" class="flex flex-col">
             <button id="button-shonan" data-station="https://shonanbeachfm.out.airtime.pro/shonanbeachfm_c"
-               class="station off px-4 py-2  text-white rounded "
+               class="station off px-4 py-2  rounded "
                >
                <h2>Shonan Beach FM</h2>
                <div data-timezone="Asia/Tokyo" class="time-of-day">  <i data-lucide></i>
-                  <span class="label"></span>
+                  <span class="label text-zinc-500 font-light"></span>
                </div>
             </button>
             <button id="button-knkx"
                data-station="https://knkx-live-a.edge.audiocdn.com/6284_64k"
-               class="station off px-4 py-2 text-white rounded "
+               class="station off px-4 py-2 rounded "
                >
                <h2>KNKX</h2>
-               <div data-timezone="America/Vancouver" class="time-of-day">  <i data-lucide></i>
-                  <span class="label"></span>
+               <div data-timezone="America/Vancouver" class="time-of-day ">  <i data-lucide></i>
+                  <span class="label text-zinc-500 font-light"></span>
                </div>
             </button>
 
             <button id="button-108soul"
                data-station="http://s2.radio.co:80/sdd9757d9b/listen"
-               class="station off px-4 py-2  text-white rounded "
+               class="station off px-4 py-2  rounded "
                >
                <h2>108 Soul</h2>
                <div data-timezone="America/New_York" class="time-of-day"><i data-lucide></i>
-                  <span class="label"></span>
+                  <span class="label text-zinc-500 font-light"></span>
+               </div>
+            </button>
+
+            <button id="button-BBC2"
+               data-station="http://lsn.lv/bbcradio.m3u8?station=bbc_radio_two&bitrate=96000"
+               class="station off px-4 py-2rounded "
+               >
+               <h2>BBC Radio 2</h2>
+               <div data-timezone="Europe/London" class="time-of-day"><i data-lucide></i>
+                  <span class="label text-zinc-500 font-light"></span>
                </div>
             </button>
 
@@ -49,12 +59,12 @@
 
             <aside class="slider-container flex items-start">
                 <div class="slider-wrapper w-0 h-[120px] ml-6 mt-16 flex justify-center relative">
-                    <input id="dial" type="range" min="0" max="2" step="0.01" value="0">
+                    <input id="dial" type="range" min="0" step="0.01" value="0">
                 </div>
             </aside>
          </div>
-<button id="playPause" class="p-2 w-[95px] h-[55px]"></button>
-
+<div class="power flex items-center text-zinc-500 font-light">power<button id="playPause" class="ml-4 p-2 w-[95px] h-[55px]"></button>
+</div>
 
 
 

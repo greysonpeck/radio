@@ -5,9 +5,11 @@ let noiseSource;
 let noiseGain;
 let noiseFilter;
 
-const CAPTURE_RADIUS = 0.4; // smaller = stricter tuning
-const FADE_WIDTH = 0.12;    // softness near edges
-const BUFFER = 0.15; // amount of buffer at both ends
+// --- Tuning parameters ---
+const CAPTURE_RADIUS = 0.4; // smaller = stricter tuning (less overlap)
+const FADE_EXPONENT = 1.2;   // >1 = sharper fade edges
+const BUFFER = 0.25;          // extra slider space before first/after last station
+const MIN_STRENGTH = 0.01;    // anything below this is considered silent
 
 
 addEventListener("DOMContentLoaded", (event) => { 
@@ -23,6 +25,9 @@ const stations = [
   {
     name: '108 Soul',
     url: 'http://s2.radio.co:80/sdd9757d9b/listen'
+  },  {
+    name: 'BBC Radio 2',
+    url: 'http://lsn.lv/bbcradio.m3u8?station=bbc_radio_two&bitrate=96000'
   }
 ];
 
@@ -102,7 +107,7 @@ function createStation(station) {
 function start() {
   audioCtx = new AudioContext();
   masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0.3;
+  masterGain.gain.value = 0.2;
   masterGain.connect(audioCtx.destination);
 
 
@@ -174,18 +179,24 @@ function updateDial() {
   sources.forEach((s, index) => {
     const distance = Math.abs(effectivePosition - index);
 
-    const radius = 0.6; // how far a station "reaches" for blending
-    let strength = Math.max(0, (radius - distance) / radius);
+    // --- raw strength based on distance ---
+    let strength = (CAPTURE_RADIUS - distance) / CAPTURE_RADIUS;
+    strength = Math.max(0, strength); // clamp negative to 0
 
-    // optional smoother fade
-    strength = Math.min(1, Math.pow(strength, 0.8));
+    // --- sharpen fade for more static between stations ---
+    strength = Math.pow(strength, FADE_EXPONENT);
 
+    // --- dead zone: zero out very small contributions ---
+    if (strength < MIN_STRENGTH) strength = 0;
+
+    // --- apply gain ---
     s.gain.gain.setTargetAtTime(strength, audioCtx.currentTime, 0.05);
 
+    // track strongest station for grain
     maxStationStrength = Math.max(maxStationStrength, strength);
   });
 
-  // Grain / noise inversely related to total station presence
+  // --- grain / static inversely related to station presence ---
   const noiseLevel = Math.pow(1 - maxStationStrength, 2);
   noiseGain.gain.setTargetAtTime(noiseLevel * 0.35, audioCtx.currentTime, 0.05);
 }
@@ -208,7 +219,7 @@ playPause.addEventListener('click', async () => {
 });
 
 
-
+dial.max = stations.length - 1;
 dial.addEventListener('input', () => {
   if (!audioCtx) return;
   updateDial();
