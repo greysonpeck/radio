@@ -192,15 +192,22 @@ function updateDial() {
 
 playPause.addEventListener('click', async () => {
   if (!isPlaying) {
-    if (!audioCtx) start();
-    await audioCtx.resume();
-    playPause.textContent = 'Pause';
+    if (!audioCtx) start();      // first time
+    else {
+      // resume all paused audio
+      sources.forEach(s => s.audio.play());
+    }
+
+    await audioCtx.resume();      // resume context
+    playPause.classList.add('on');
   } else {
     stop();
-    playPause.textContent = 'Play';
+    playPause.classList.remove('on');
   }
   isPlaying = !isPlaying;
 });
+
+
 
 dial.addEventListener('input', () => {
   if (!audioCtx) return;

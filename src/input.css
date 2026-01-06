@@ -106,6 +106,7 @@ h2::after {
 
 
 #dial {
+      touch-action: none; /* prevent default scrolling/pull-to-refresh gestures */
       -webkit-appearance: none;  /* remove default styling */
   appearance: none;           /* standard property for other browsers */
     width: 200px;    /* length of slider after rotation */
@@ -154,4 +155,12 @@ h2::after {
   border-radius: 10px;
   cursor: pointer;
   border: none;     /* remove default border in Firefox */
+}
+
+#playPause {
+    background-image: url(../img/switch-off.png);
+}
+
+#playPause.on {
+    background-image: url(../img/switch-on.png);
 }
