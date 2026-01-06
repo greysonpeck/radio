@@ -1,0 +1,33 @@
+<!-- 
+            <button id="button-BBC2"
+               data-station="http://lsn.lv/bbcradio.m3u8?station=bbc_radio_two&bitrate=96000"
+               class="station off px-4 py-2  text-white rounded "
+               >
+               <h2>BBC Radio 2</h2>
+               <div data-timezone="Europe/London" class="time-of-day"><i data-lucide></i>
+                  <span class="label"></span>
+               </div>
+            </button>
+
+            </div>
+
+
+            <video
+               id="seinPlayer"
+               playsinline
+               muted
+               style="display:none"
+               ></video>
+            <button id="toggleSein" class="station off px-4 py-2 text-white rounded ">
+               <h2>Seinfeld</h2>
+            </button>
+
+
+
+
+            <div class="flex-row text-center">  <button
+               id="toggleRain" class="px-4 py-2  text-white rounded "
+               >
+               RAIN
+               </button>
+            </div>  -->

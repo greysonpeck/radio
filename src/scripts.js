@@ -1,207 +1,319 @@
 
+let audioCtx;
+let masterGain;
+let noiseSource;
+let noiseGain;
+let noiseFilter;
+
+const CAPTURE_RADIUS = 0.4; // smaller = stricter tuning
+const FADE_WIDTH = 0.12;    // softness near edges
+const BUFFER = 0.15; // amount of buffer at both ends
+
+
 addEventListener("DOMContentLoaded", (event) => { 
-// --- Audio setup ---
-const audio = new Audio();
-audio.crossOrigin = "anonymous"; // REQUIRED for Web Audio
-audio.preload = "none";
-
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-const source = audioContext.createMediaElementSource(audio);
-
-// --- Tinny radio EQ (band-pass-ish) ---
-const highPass = audioContext.createBiquadFilter();
-highPass.type = "highpass";
-highPass.frequency.value = 400;
-
-const midPeak = audioContext.createBiquadFilter();
-midPeak.type = "peaking";
-midPeak.frequency.value = 1600;
-midPeak.Q.value = 1.2;
-midPeak.gain.value = 6;
-
-const lowPass = audioContext.createBiquadFilter();
-lowPass.type = "lowpass";
-lowPass.frequency.value = 4500;
-
-// Soft saturation curve
-function makeSaturationCurve(amount = 10) {
-  const samples = 44100;
-  const curve = new Float32Array(samples);
-  const k = typeof amount === "number" ? amount : 10;
-  const deg = Math.PI / 180;
-
-  for (let i = 0; i < samples; i++) {
-    const x = (i * 2) / samples - 1;
-    curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+const stations = [
+  {
+    name: 'Shonan Beach FM',
+    url: 'https://shonanbeachfm.out.airtime.pro/shonanbeachfm_c'
+  },
+  {
+    name: 'KNKX',
+    url: 'https://knkx-live-a.edge.audiocdn.com/6284_64k'
+  },
+  {
+    name: '108 Soul',
+    url: 'http://s2.radio.co:80/sdd9757d9b/listen'
   }
+];
 
+let audioCtx;
+let masterGain;
+let isPlaying = false;
+
+const sources = []; // { audio, gain }
+
+const dial = document.getElementById('dial');
+const playPause = document.getElementById('playPause');
+
+function makeSaturationCurve(amount) {
+  const n = 65536;
+  const curve = new Float32Array(n);
+  const k = amount * 100; // amount controls distortion intensity
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = ((1 + k) * x) / (1 + k * Math.abs(x));
+  }
   return curve;
 }
 
-// Drop-in distortion node
-const saturation = audioContext.createWaveShaper();
-saturation.curve = makeSaturationCurve(8); // 5–10 = subtle, 15+ = crunchy
-saturation.oversample = "4x";
+function createRadioEQ(ctx, inputNode) {
+  // --- High-pass (removes sub-bass) ---
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 400; // preserves some warmth
 
-// Wire chain
-source
-  .connect(highPass)     // cut bass
-  .connect(midPeak)      // honk
-  .connect(lowPass)      // cut highs
-  .connect(saturation)   // grit
-  .connect(audioContext.destination);
+  // --- Low-pass (removes harsh highs) ---
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 7000; // keeps top-end, softens high-end harshness
+
+  // --- Mid-range boost (nasal character) ---
+  const mid = ctx.createBiquadFilter();
+  mid.type = 'peaking';
+  mid.frequency.value = 1200; // slightly lower mid
+  mid.Q.value = 0.7;          // wider, smooth
+  mid.gain.value = 1;          // mild boost
+
+  // --- Waveshaper / subtle saturation ---
+  const shaper = ctx.createWaveShaper();
+  shaper.curve = makeSaturationCurve(0.08); // soft analog-style saturation
+  shaper.oversample = '4x';
+
+  // --- Connect chain ---
+  inputNode.connect(hp);
+  hp.connect(lp);
+  lp.connect(mid);
+  mid.connect(shaper);
+
+  return shaper; // return output node
+}
+
+function createStation(station) {
+  const audio = new Audio(station.url);
+  audio.crossOrigin = 'anonymous';
+  audio.loop = true;
+
+  // Create source node
+  const source = audioCtx.createMediaElementSource(audio);
+
+  // --- Station gain (pre-master, base volume) ---
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.4; // reduces peak, preserves headroom for overlap + grain
+
+  // --- Radio EQ chain ---
+  const eqOut = createRadioEQ(audioCtx, source);
+
+  // Connect EQ output to station gain, then master
+  eqOut.connect(gain).connect(masterGain);
+
+  return { audio, gain };
+}
+
+function start() {
+  audioCtx = new AudioContext();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.3;
+  masterGain.connect(audioCtx.destination);
 
 
 
 
-// --- Play / Pause ---
-const buttons = document.querySelectorAll(".station");
+// GRAIN
 
-let isPlayingRadio = false;
+function createNoise() {
+  const bufferSize = 2 * audioCtx.sampleRate;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
 
-buttons.forEach(button => {
-  button.addEventListener("click", async () => {
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
 
-    if (!isPlayingRadio) {
-      // START
-      const streamUrl = button.dataset.station;
-      await playStation(streamUrl);
+  noiseSource = audioCtx.createBufferSource();
+  noiseSource.buffer = buffer;
+  noiseSource.loop = true;
 
-      try {
-        await audio.play();
-        isPlayingRadio = true;
-        button.classList.remove("off");
-      } catch (err) {
-        console.error("Audio could not play:", err);
-      }
+  noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.value = 1800;
+  noiseFilter.Q.value = 0.7;
 
-    } else {
-      // PAUSE
-      audio.pause();
-      isPlayingRadio = false;
-      button.classList.add("off");
-    }
+  noiseGain = audioCtx.createGain();
+  noiseGain.gain.value = 0;
+
+  noiseSource
+    .connect(noiseFilter)
+    .connect(noiseGain)
+    .connect(masterGain);
+
+  noiseSource.start();
+  console.log("Noise started");
+}
+
+createNoise();
+
+  stations.forEach(station => {
+    const s = createStation(station);
+    s.audio.play();
+    sources.push(s);
   });
+
+  updateDial();
+}
+
+function stop() {
+  sources.forEach(s => {
+    s.audio.pause();
+    // do not clear src if you want instant resume
+  });
+
+  // stop noise without closing context
+  if (noiseSource) {
+    noiseSource.stop();
+    noiseSource.disconnect();
+    noiseSource = null;
+  }
+}
+
+function updateDial() {
+  const sliderValue = parseFloat(dial.value); // 0 → stations.length-1
+  const effectivePosition = sliderValue * (stations.length - 1 + 2 * BUFFER) / (stations.length - 1) - BUFFER;
+
+  let maxStationStrength = 0;
+
+  sources.forEach((s, index) => {
+    const distance = Math.abs(effectivePosition - index);
+
+    const radius = 0.6; // how far a station "reaches" for blending
+    let strength = Math.max(0, (radius - distance) / radius);
+
+    // optional smoother fade
+    strength = Math.min(1, Math.pow(strength, 0.8));
+
+    s.gain.gain.setTargetAtTime(strength, audioCtx.currentTime, 0.05);
+
+    maxStationStrength = Math.max(maxStationStrength, strength);
+  });
+
+  // Grain / noise inversely related to total station presence
+  const noiseLevel = Math.pow(1 - maxStationStrength, 2);
+  noiseGain.gain.setTargetAtTime(noiseLevel * 0.35, audioCtx.currentTime, 0.05);
+}
+
+playPause.addEventListener('click', async () => {
+  if (!isPlaying) {
+    if (!audioCtx) start();
+    await audioCtx.resume();
+    playPause.textContent = 'Pause';
+  } else {
+    stop();
+    playPause.textContent = 'Play';
+  }
+  isPlaying = !isPlaying;
 });
 
-let currentStream = null;
+dial.addEventListener('input', () => {
+  if (!audioCtx) return;
+  updateDial();
+});
 
-async function playStation(url) {
-  if (audioContext.state === "suspended") {
-    await audioContext.resume();
-  }
 
-  if (currentStream === url && !audio.paused) {
-    audio.pause();
-    return;
-  }
 
-  audio.pause();
-  audio.src = url;
-  audio.load();
-  audio.play();
 
-  currentStream = url;
-}
+
+
+
+
+
 
 
 
 
 // RAINY STUFF
 // --- Audio context ---
-const audioCtxRain = new (window.AudioContext || window.webkitAudioContext)();
+// const audioCtxRain = new (window.AudioContext || window.webkitAudioContext)();
 
-// --- Audio element ---
-const rainSound = document.createElement("audio");
-rainSound.src = "src/audio/main-rain.mp4";
-rainSound.loop = true;
-rainSound.crossOrigin = "anonymous";
+// // --- Audio element ---
+// const rainSound = document.createElement("audio");
+// rainSound.src = "src/audio/main-rain.mp4";
+// rainSound.loop = true;
+// rainSound.crossOrigin = "anonymous";
 
-// --- Audio nodes ---
+// // --- Audio nodes ---
 
-// Low shelf for warmth
-const lowShelfRain = audioCtxRain.createBiquadFilter();
-lowShelfRain.type = "lowshelf";
-lowShelfRain.frequency.value = 120;
-lowShelfRain.gain.value = 10; // boost low end
+// // Low shelf for warmth
+// const lowShelfRain = audioCtxRain.createBiquadFilter();
+// lowShelfRain.type = "lowshelf";
+// lowShelfRain.frequency.value = 120;
+// lowShelfRain.gain.value = 10; // boost low end
 
-// Cut most mids
-const midPeakRain = audioCtxRain.createBiquadFilter();
-midPeakRain.type = "peaking";
-midPeakRain.frequency.value = 1000; // center of mids
-midPeakRain.Q.value = 1.2;
-midPeakRain.gain.value = -6; // cut mids hard
+// // Cut most mids
+// const midPeakRain = audioCtxRain.createBiquadFilter();
+// midPeakRain.type = "peaking";
+// midPeakRain.frequency.value = 1000; // center of mids
+// midPeakRain.Q.value = 1.2;
+// midPeakRain.gain.value = -6; // cut mids hard
 
-// Roll off highs
-const highShelfRain = audioCtxRain.createBiquadFilter();
-highShelfRain.type = "highshelf";
-highShelfRain.frequency.value = 4000;
-highShelfRain.gain.value = -10; // cut highs significantly
+// // Roll off highs
+// const highShelfRain = audioCtxRain.createBiquadFilter();
+// highShelfRain.type = "highshelf";
+// highShelfRain.frequency.value = 4000;
+// highShelfRain.gain.value = -10; // cut highs significantly
 
-// Soft saturation
-function makeSaturationCurveRain(amount = 6) {
-  const samples = 44100;
-  const curve = new Float32Array(samples);
-  const k = amount;
-  const deg = Math.PI / 180;
-  for (let i = 0; i < samples; i++) {
-    const x = (i * 2) / samples - 1;
-    curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
-  }
-  return curve;
-}
-const saturationRain = audioCtxRain.createWaveShaper();
-saturationRain.curve = makeSaturationCurveRain(6);
-saturationRain.oversample = "4x";
+// // Soft saturation
+// function makeSaturationCurveRain(amount = 6) {
+//   const samples = 44100;
+//   const curve = new Float32Array(samples);
+//   const k = amount;
+//   const deg = Math.PI / 180;
+//   for (let i = 0; i < samples; i++) {
+//     const x = (i * 2) / samples - 1;
+//     curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+//   }
+//   return curve;
+// }
+// const saturationRain = audioCtxRain.createWaveShaper();
+// saturationRain.curve = makeSaturationCurveRain(6);
+// saturationRain.oversample = "4x";
 
-// Gain for play/pause and volume control
-const gainNode = audioCtxRain.createGain();
-gainNode.gain.value = 0; // start muted
+// // Gain for play/pause and volume control
+// const gainNode = audioCtxRain.createGain();
+// gainNode.gain.value = 0; // start muted
 
-// --- Connect chain ---
-const rainSource = audioCtxRain.createMediaElementSource(rainSound);
-rainSource
-  .connect(lowShelfRain)
-  .connect(midPeakRain)
-  .connect(highShelfRain)
-  .connect(saturationRain)
-  .connect(gainNode)
-  .connect(audioCtxRain.destination);
+// // --- Connect chain ---
+// const rainSource = audioCtxRain.createMediaElementSource(rainSound);
+// rainSource
+//   .connect(lowShelfRain)
+//   .connect(midPeakRain)
+//   .connect(highShelfRain)
+//   .connect(saturationRain)
+//   .connect(gainNode)
+//   .connect(audioCtxRain.destination);
 
-// --- Fade helper ---
-function fadeGain(target, duration = 1.5) {
-  const now = audioCtxRain.currentTime;
-  gainNode.gain.cancelScheduledValues(now);
-  gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-  gainNode.gain.linearRampToValueAtTime(target, now + duration);
-}
+// // --- Fade helper ---
+// function fadeGain(target, duration = 1.5) {
+//   const now = audioCtxRain.currentTime;
+//   gainNode.gain.cancelScheduledValues(now);
+//   gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+//   gainNode.gain.linearRampToValueAtTime(target, now + duration);
+// }
 
-// --- Play/Pause logic ---
-let isPlaying = false;
-let audioResumed = false;
+// // --- Play/Pause logic ---
+// let isPlayingRain = false;
+// let audioResumed = false;
 
-function toggleRain() {
-  if (!audioResumed && audioCtxRain.state === "suspended") {
-    audioCtxRain.resume();
-    audioResumed = true;
-  }
+// function toggleRain() {
+//   if (!audioResumed && audioCtxRain.state === "suspended") {
+//     audioCtxRain.resume();
+//     audioResumed = true;
+//   }
 
-  isPlaying = !isPlaying;
-  const targetVolume = isPlaying ? 1 : 0; // half volume
+//   isPlayingRain = !isPlayingRain;
+//   const targetVolume = isPlayingRain ? 1 : 0; // half volume
 
-  if (isPlaying) {
-    rainSound.play().catch(err => console.log(err));
-    fadeGain(targetVolume, 1.5); // fade in
-  } else {
-    fadeGain(targetVolume, 1.5); // fade out
-    setTimeout(() => rainSound.pause(), 1500); // pause after fade
-  }
+//   if (isPlayingRain) {
+//     rainSound.play().catch(err => console.log(err));
+//     fadeGain(targetVolume, 1.5); // fade in
+//   } else {
+//     fadeGain(targetVolume, 1.5); // fade out
+//     setTimeout(() => rainSound.pause(), 1500); // pause after fade
+//   }
 
-  document.getElementById("toggleRain").textContent = isPlaying ? "Pause Rain" : "Play Rain";
-}
+//   document.getElementById("toggleRain").textContent = isPlayingRain ? "Pause Rain" : "Play Rain";
+// }
 
 // --- Connect button ---
-document.getElementById("toggleRain").addEventListener("click", toggleRain);
+// document.getElementById("toggleRain").addEventListener("click", toggleRain);
 
 
 
@@ -209,101 +321,101 @@ document.getElementById("toggleRain").addEventListener("click", toggleRain);
 
 // Sein
 
-const audioCtxSein = new (window.AudioContext || window.webkitAudioContext)();
-const videoSein = document.getElementById("seinPlayer");
+// const audioCtxSein = new (window.AudioContext || window.webkitAudioContext)();
+// const videoSein = document.getElementById("seinPlayer");
 
-// --- Load HLS ---
-if (Hls.isSupported()) {
-  const hls = new Hls();
-  hls.loadSource("https://watch-episodes.seinfeld626.com/hls/seinfeld/master.m3u8");
-  hls.attachMedia(videoSein);
-  hls.on(Hls.Events.MANIFEST_PARSED, () => {
-  hls.currentLevel = 0; // lowest bitrate rendition
-  hls.autoLevelEnabled = false;
-});
+// // --- Load HLS ---
+// if (Hls.isSupported()) {
+//   const hls = new Hls();
+//   hls.loadSource("https://watch-episodes.seinfeld626.com/hls/seinfeld/master.m3u8");
+//   hls.attachMedia(videoSein);
+//   hls.on(Hls.Events.MANIFEST_PARSED, () => {
+//   hls.currentLevel = 0; // lowest bitrate rendition
+//   hls.autoLevelEnabled = false;
+// });
 
-} else if (videoSein.canPlayType("application/vnd.apple.mpegurl")) {
-  // Safari native HLS
-  videoSein.src = "https://watch-episodes.seinfeld626.com/hls/seinfeld/master.m3u8";
-}
+// } else if (videoSein.canPlayType("application/vnd.apple.mpegurl")) {
+//   // Safari native HLS
+//   videoSein.src = "https://watch-episodes.seinfeld626.com/hls/seinfeld/master.m3u8";
+// }
 
-// --- Web Audio chain ---
-const sourceSein = audioCtxSein.createMediaElementSource(videoSein);
+// // --- Web Audio chain ---
+// const sourceSein = audioCtxSein.createMediaElementSource(videoSein);
 
-const lowShelfSein = audioCtxSein.createBiquadFilter();
-lowShelfSein.type = "lowshelf";
-lowShelfSein.frequency.value = 120;
-lowShelfSein.gain.value = 6;
+// const lowShelfSein = audioCtxSein.createBiquadFilter();
+// lowShelfSein.type = "lowshelf";
+// lowShelfSein.frequency.value = 120;
+// lowShelfSein.gain.value = 6;
 
-const midCutSein = audioCtxSein.createBiquadFilter();
-midCutSein.type = "peaking";
-midCutSein.frequency.value = 1000;
-midCutSein.Q.value = 1.2;
-midCutSein.gain.value = -18;
+// const midCutSein = audioCtxSein.createBiquadFilter();
+// midCutSein.type = "peaking";
+// midCutSein.frequency.value = 1000;
+// midCutSein.Q.value = 1.2;
+// midCutSein.gain.value = -18;
 
-const highRollSein = audioCtxSein.createBiquadFilter();
-highRollSein.type = "highshelf";
-highRollSein.frequency.value = 3500;
-highRollSein.gain.value = -20;
+// const highRollSein = audioCtxSein.createBiquadFilter();
+// highRollSein.type = "highshelf";
+// highRollSein.frequency.value = 3500;
+// highRollSein.gain.value = -20;
 
-const saturationSein = audioCtxSein.createWaveShaper();
-saturationSein.curve = makeSaturationCurveRain(5);
-saturationSein.oversample = "4x";
+// const saturationSein = audioCtxSein.createWaveShaper();
+// saturationSein.curve = makeSaturationCurveRain(5);
+// saturationSein.oversample = "4x";
 
-const gainSein = audioCtxSein.createGain();
-gainSein.gain.value = 0;
+// const gainSein = audioCtxSein.createGain();
+// gainSein.gain.value = 0;
 
-// --- Connect chain ---
-sourceSein
-  .connect(lowShelfSein)
-  .connect(midCutSein)
-  .connect(highRollSein)
-  .connect(saturationSein)
-  .connect(gainSein)
-  .connect(audioCtxSein.destination);
+// // --- Connect chain ---
+// sourceSein
+//   .connect(lowShelfSein)
+//   .connect(midCutSein)
+//   .connect(highRollSein)
+//   .connect(saturationSein)
+//   .connect(gainSein)
+//   .connect(audioCtxSein.destination);
 
-  function fadeGainSein(target, duration) {
-  const now = audioCtxSein.currentTime;
-  gainSein.gain.cancelScheduledValues(now);
-  gainSein.gain.setValueAtTime(gainSein.gain.value, now);
-  gainSein.gain.linearRampToValueAtTime(target, now + duration);
-}
+//   function fadeGainSein(target, duration) {
+//   const now = audioCtxSein.currentTime;
+//   gainSein.gain.cancelScheduledValues(now);
+//   gainSein.gain.setValueAtTime(gainSein.gain.value, now);
+//   gainSein.gain.linearRampToValueAtTime(target, now + duration);
+// }
 
 
 
-let isPlayingSein = false;
-let audioResumedSein = false;
+// let isPlayingSein = false;
+// let audioResumedSein = false;
 
-function toggleSein() {
-  // Required: resume AudioContext on user gesture
-  if (!audioResumedSein && audioCtxSein.state === "suspended") {
-    audioCtxSein.resume();
-    audioResumedSein = true;
-  }
+// function toggleSein() {
+//   // Required: resume AudioContext on user gesture
+//   if (!audioResumedSein && audioCtxSein.state === "suspended") {
+//     audioCtxSein.resume();
+//     audioResumedSein = true;
+//   }
 
-  isPlayingSein = !isPlayingSein;
-  const targetVolume = isPlayingSein ? 0.4 : 0; // adjust to taste
-  const fadeTime = 1.5;
+//   isPlayingSein = !isPlayingSein;
+//   const targetVolume = isPlayingSein ? 0.4 : 0; // adjust to taste
+//   const fadeTime = 1.5;
 
-  if (isPlayingSein) {
-    videoSein.muted = false;
-    videoSein.play().catch(console.error);
-    fadeGainSein(targetVolume, fadeTime);
-  } else {
-    fadeGainSein(0, fadeTime);
-    setTimeout(() => videoSein.pause(), fadeTime * 1000);
-  }
+//   if (isPlayingSein) {
+//     videoSein.muted = false;
+//     videoSein.play().catch(console.error);
+//     fadeGainSein(targetVolume, fadeTime);
+//   } else {
+//     fadeGainSein(0, fadeTime);
+//     setTimeout(() => videoSein.pause(), fadeTime * 1000);
+//   }
 
   
 
-  document.getElementById("toggleSein").textContent =
-    isPlayingSein ? "Pause" : "Play";
-}
+//   document.getElementById("toggleSein").textContent =
+//     isPlayingSein ? "Pause" : "Play";
+// }
 
 
-document
-  .getElementById("toggleSein")
-  .addEventListener("click", toggleSein);
+// document
+//   .getElementById("toggleSein")
+//   .addEventListener("click", toggleSein);
 
 
 

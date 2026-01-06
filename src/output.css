@@ -7,8 +7,8 @@
       "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
-    --color-blue-600: oklch(54.6% 0.245 262.881);
-    --color-blue-700: oklch(48.8% 0.243 264.376);
+    --color-slate-300: oklch(86.9% 0.022 252.894);
+    --color-slate-600: oklch(44.6% 0.043 257.281);
     --color-white: #fff;
     --spacing: 0.25rem;
     --default-font-family: var(--font-sans);
@@ -173,11 +173,32 @@
   .mt-12 {
     margin-top: calc(var(--spacing) * 12);
   }
+  .mt-14 {
+    margin-top: calc(var(--spacing) * 14);
+  }
+  .mt-16 {
+    margin-top: calc(var(--spacing) * 16);
+  }
+  .ml-6 {
+    margin-left: calc(var(--spacing) * 6);
+  }
+  .ml-8 {
+    margin-left: calc(var(--spacing) * 8);
+  }
   .flex {
     display: flex;
   }
-  .w-\[355px\] {
-    width: 355px;
+  .h-\[120px\] {
+    height: 120px;
+  }
+  .w-0 {
+    width: calc(var(--spacing) * 0);
+  }
+  .w-full {
+    width: 100%;
+  }
+  .max-w-\[355px\] {
+    max-width: 355px;
   }
   .flex-col {
     flex-direction: column;
@@ -187,6 +208,9 @@
   }
   .items-center {
     align-items: center;
+  }
+  .items-start {
+    align-items: flex-start;
   }
   .justify-center {
     justify-content: center;
@@ -200,8 +224,8 @@
   .rounded {
     border-radius: 0.25rem;
   }
-  .bg-blue-600 {
-    background-color: var(--color-blue-600);
+  .p-2 {
+    padding: calc(var(--spacing) * 2);
   }
   .px-4 {
     padding-inline: calc(var(--spacing) * 4);
@@ -212,29 +236,26 @@
   .text-center {
     text-align: center;
   }
+  .text-slate-600 {
+    color: var(--color-slate-600);
+  }
   .text-white {
     color: var(--color-white);
+  }
+  .ring-1 {
+    --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+  .ring-slate-300 {
+    --tw-ring-color: var(--color-slate-300);
   }
   .blur {
     --tw-blur: blur(8px);
     filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
   }
-  .hover\:bg-blue-700 {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-blue-700);
-      }
-    }
-  }
-  .md\:flex-row {
-    @media (width >= 48rem) {
-      flex-direction: row;
-    }
-  }
 }
 body {
-  background-image: url(../img/sein.jpg);
-  background-size: cover;
+  background-color: #e9e5d9;
   font-family: 'Lexend', serif;
   font-weight: 500;
   color: white;
@@ -274,36 +295,6 @@ h2::after {
   overflow: hidden;
   cursor: pointer;
   display: inline-block;
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.1),  0 6px 20px 0 rgba(0, 0, 0, 0.05);
-}
-.station::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border-radius: 12px;
-  background: linear-gradient(to bottom, rgb(255, 255, 255), rgb(188, 190, 192));
-  z-index: 0;
-}
-.station::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: 8px;
-  background-size: cover;
-  background-position: center;
-  z-index: 1;
-  transition: filter 0.3s ease;
-}
-.station.off::after {
-  filter: brightness(0.6) contrast(0.8) saturate(0.6);
-  cursor: default;
-  pointer-events: none;
 }
 #retroVideo {
   visibility: hidden;
@@ -327,11 +318,109 @@ h2::after {
 .time-of-day > svg {
   display: inline;
 }
-@media (min-width: 768px) {
-  #retroCanvas {
-    width: 640px;
-    height: 360px;
-  }
+#dial {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 200px;
+  height: 20px;
+  transform-origin: top left;
+  position: absolute;
+  top: 50px;
+  transform: rotate(90deg);
+  transform-origin: 50% 50%;
+}
+#dial::-webkit-slider-runnable-track {
+  background: #ccc;
+  height: 4px;
+  border-radius: 1px;
+}
+#dial::-moz-range-track {
+  background: #ccc;
+  height: 4px;
+  border-radius: 1px;
+}
+#dial::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 8px;
+  height: 24px;
+  background: #444;
+  border-radius: 2px;
+  margin-top: -10px;
+  cursor: pointer;
+}
+#dial::-moz-range-thumb {
+  width: 8px;
+  height: 24px;
+  background: #444;
+  border-radius: 10px;
+  cursor: pointer;
+  border: none;
+}
+@property --tw-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --tw-shadow-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-shadow-alpha {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --tw-inset-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --tw-inset-shadow-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-inset-shadow-alpha {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --tw-ring-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-ring-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --tw-inset-ring-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-inset-ring-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --tw-ring-inset {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-ring-offset-width {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --tw-ring-offset-color {
+  syntax: "*";
+  inherits: false;
+  initial-value: #fff;
+}
+@property --tw-ring-offset-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
 }
 @property --tw-blur {
   syntax: "*";
@@ -389,6 +478,20 @@ h2::after {
 @layer properties {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     *, ::before, ::after, ::backdrop {
+      --tw-shadow: 0 0 #0000;
+      --tw-shadow-color: initial;
+      --tw-shadow-alpha: 100%;
+      --tw-inset-shadow: 0 0 #0000;
+      --tw-inset-shadow-color: initial;
+      --tw-inset-shadow-alpha: 100%;
+      --tw-ring-color: initial;
+      --tw-ring-shadow: 0 0 #0000;
+      --tw-inset-ring-color: initial;
+      --tw-inset-ring-shadow: 0 0 #0000;
+      --tw-ring-inset: initial;
+      --tw-ring-offset-width: 0px;
+      --tw-ring-offset-color: #fff;
+      --tw-ring-offset-shadow: 0 0 #0000;
       --tw-blur: initial;
       --tw-brightness: initial;
       --tw-contrast: initial;
