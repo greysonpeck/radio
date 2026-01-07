@@ -1,4 +1,9 @@
-<!-- 
+const CAPTURE_RADIUS = 0.4;
+const FADE_EXPONENT = 1.3;
+const BUFFER = 0.25;
+const MIN_STRENGTH = 0.01;
+
+
             <button id="button-BBC2"
                data-station="http://lsn.lv/bbcradio.m3u8?station=bbc_radio_two&bitrate=96000"
                class="station off px-4 py-2  text-white rounded "
@@ -30,4 +35,4 @@
                >
                RAIN
                </button>
-            </div>  -->
+            </div> 

@@ -194,4 +194,49 @@ playPause.addEventListener("click", async () => {
 
 dial.addEventListener("input", updateDial);
 
+
+
+
+// Time of day
+function getTimeOfDay(timeZone) {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hour12: false,
+      timeZone
+    }).format(new Date())
+  );
+
+if (hour >= 5 && hour < 8)
+    return { label: "early morning", icon: "bird" };
+
+  if (hour >= 8 && hour < 12)
+    return { label: "morning", icon: "sun" };
+
+  if (hour >= 12 && hour < 15)
+    return { label: "midday", icon: "cloud-sun" };
+
+  if (hour >= 15 && hour < 18)
+    return { label: "afternoon", icon: "cloud" };
+
+  if (hour >= 18 && hour < 21)
+    return { label: "evening", icon: "sunset" };
+
+  return { label: "night", icon: "moon" };
+}
+
+  document.querySelectorAll("[data-timezone]").forEach(span => {
+    const { label, icon } = getTimeOfDay(span.dataset.timezone);
+
+span.querySelector(".label").textContent = label;
+span.querySelector("[data-lucide]").dataset.lucide = icon;
+
+lucide.createIcons();
+  });
+
 });
+
+
+
+
+

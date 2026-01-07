@@ -1,0 +1,198 @@
+let audioCtx;
+let masterGain;
+let noiseSource;
+let noiseGain;
+let noiseFilter;
+let isPlaying = false;
+
+// --- Tuning parameters ---
+const CAPTURE_RADIUS = 0.35;  // smaller = more dead air between stations
+const FADE_EXPONENT = 1.4;    // sharper tuning curve
+const BUFFER = 0.25;          // slider padding before first/last station
+const MIN_STRENGTH = 0.02;    // hard cutoff for bleed
+
+addEventListener("DOMContentLoaded", () => {
+
+  const stations = [
+    { name: "Shonan Beach FM", url: "https://shonanbeachfm.out.airtime.pro/shonanbeachfm_c" },
+    { name: "KNKX", url: "https://knkx-live-a.edge.audiocdn.com/6284_64k" },
+    { name: "108 Soul", url: "http://s2.radio.co:80/sdd9757d9b/listen" },
+    { name: "BBC Radio 4", url: "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_fourfm&bitrate=96000" }
+  ];
+
+  const sources = [];
+  const dial = document.getElementById("dial");
+  const playPause = document.getElementById("playPause");
+
+  // -------------------------
+  // Audio helpers
+  // -------------------------
+
+  function makeSaturationCurve(amount) {
+    const n = 65536;
+    const curve = new Float32Array(n);
+    const k = amount * 100;
+    for (let i = 0; i < n; i++) {
+      const x = (i * 2) / n - 1;
+      curve[i] = ((1 + k) * x) / (1 + k * Math.abs(x));
+    }
+    return curve;
+  }
+
+  function createRadioEQ(ctx, input) {
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 400;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 7000;
+
+    const mid = ctx.createBiquadFilter();
+    mid.type = "peaking";
+    mid.frequency.value = 1200;
+    mid.Q.value = 0.7;
+    mid.gain.value = 1;
+
+    const shaper = ctx.createWaveShaper();
+    shaper.curve = makeSaturationCurve(0.08);
+    shaper.oversample = "4x";
+
+    input.connect(hp);
+    hp.connect(lp);
+    lp.connect(mid);
+    mid.connect(shaper);
+
+    return shaper;
+  }
+
+  function createStation(station) {
+    const audio = new Audio(station.url);
+    audio.crossOrigin = "anonymous";
+    audio.loop = true;
+
+    const source = audioCtx.createMediaElementSource(audio);
+
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0; // start muted
+
+    const eqOut = createRadioEQ(audioCtx, source);
+    eqOut.connect(gain).connect(masterGain);
+
+    // SAFARI REQUIREMENT: play once, never pause
+    audio.play().catch(() => {
+      console.log("Waiting for user gesture to start audio");
+    });
+
+    return { audio, gain };
+  }
+
+  function createNoise() {
+    const bufferSize = 2 * audioCtx.sampleRate;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    noiseSource = audioCtx.createBufferSource();
+    noiseSource.buffer = buffer;
+    noiseSource.loop = true;
+
+    noiseFilter = audioCtx.createBiquadFilter();
+    noiseFilter.type = "bandpass";
+    noiseFilter.frequency.value = 1800;
+    noiseFilter.Q.value = 0.7;
+
+    noiseGain = audioCtx.createGain();
+    noiseGain.gain.value = 0;
+
+    noiseSource
+      .connect(noiseFilter)
+      .connect(noiseGain)
+      .connect(masterGain);
+
+    noiseSource.start();
+  }
+
+  // -------------------------
+  // Core logic
+  // -------------------------
+
+  function start() {
+    audioCtx = new AudioContext();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.25;
+    masterGain.connect(audioCtx.destination);
+
+    createNoise();
+
+    stations.forEach(station => {
+      sources.push(createStation(station));
+    });
+
+    updateDial();
+  }
+
+  function muteAll() {
+    sources.forEach(s => {
+      s.gain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+    });
+    noiseGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+  }
+
+  function updateDial() {
+    if (!isPlaying) return;
+
+    const slider = parseFloat(dial.value);
+    const span = stations.length - 1 + 2 * BUFFER;
+    const effective = slider * span / (stations.length - 1) - BUFFER;
+
+    let maxStrength = 0;
+
+    sources.forEach((s, i) => {
+      const dist = Math.abs(effective - i);
+
+      let strength = (CAPTURE_RADIUS - dist) / CAPTURE_RADIUS;
+      strength = Math.max(0, strength);
+      strength = Math.pow(strength, FADE_EXPONENT);
+
+      if (strength < MIN_STRENGTH) strength = 0;
+
+      s.gain.gain.setTargetAtTime(strength, audioCtx.currentTime, 0.05);
+      maxStrength = Math.max(maxStrength, strength);
+    });
+
+    const noiseLevel = Math.pow(1 - maxStrength, 2);
+    noiseGain.gain.setTargetAtTime(noiseLevel * 0.35, audioCtx.currentTime, 0.05);
+  }
+
+  // -------------------------
+  // UI bindings
+  // -------------------------
+
+  playPause.addEventListener("click", async () => {
+    if (!audioCtx) {
+      start();
+    }
+
+    if (audioCtx.state === "suspended") {
+      await audioCtx.resume();
+    }
+
+    isPlaying = !isPlaying;
+
+    if (isPlaying) {
+      updateDial();
+      playPause.classList.add("on");
+    } else {
+      muteAll();
+      playPause.classList.remove("on");
+    }
+  });
+
+  dial.max = stations.length - 1;
+  dial.addEventListener("input", updateDial);
+});
